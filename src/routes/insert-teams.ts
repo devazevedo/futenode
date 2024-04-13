@@ -10,35 +10,61 @@ export async function insertTeams(app: FastifyInstance) {
         clubs: z.array(z.object({
           name: z.string().min(4).max(100),
           createdAt: z.string(),
+          popularName: z.string(),
+          sigla: z.string().length(3),
+          stadium: z.object({
+            name: z.string().min(4).max(100),
+            capacity: z.number().int().positive(),
+            city: z.string().min(4).max(100),
+            state: z.string().length(2),
+            country: z.string().length(2),
+          }),
         })),
       }),
-      response: {
-        201: z.object({
-          teamIds: z.array(z.string().uuid()),
-        }),
-      },
+      response: {},
     },
   }, async (req, rep) => {
     const { clubs } = req.body;
 
-    const teamIds = [];
-
     for (const club of clubs) {
-      const { name, createdAt } = club;
-
-      // Converte a string createdAt para um objeto Date
-      const createdAtDate = new Date(createdAt);
-
-      const team = await prisma.team.create({
-        data: {
-          name,
-          createdAt: createdAtDate,
+      const findStadium = await prisma.stadium.findFirst({
+        where: {
+          name: club.stadium.name,
         },
       });
 
-      teamIds.push(team.id);
+      let stadiumId;
+      
+      if (!findStadium) {
+        const newStadium = await prisma.stadium.create({
+          data: {
+            name: club.stadium.name,
+            capacity: club.stadium.capacity,
+            city: club.stadium.city,
+            state: club.stadium.state,
+            country: club.stadium.country,
+          },
+        });
+        stadiumId = newStadium.id;
+      } else {
+        stadiumId = findStadium.id;
+      }
+
+      await prisma.team.create({
+        data: {
+          name: club.name,
+          createdAt: new Date(club.createdAt),
+          popularName: club.popularName,
+          sigla: club.sigla,
+          stadium: {
+            connect: {
+              id: stadiumId,
+            },
+          },
+        },
+      });
     }
 
-    return rep.status(201).send({ teamIds });
+    return rep.status(201).send();
   });
 }

@@ -13,10 +13,101 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum EnumTournamentFormat {
+  LEAGUE
+  KNOCKOUT
+  GROUPS
+}
+
+model Tournament {
+  id             String               @id @default(uuid())
+  name           String
+  edition        Int
+  format         EnumTournamentFormat
+  description    String
+  createdAt      DateTime
+  matches        Match[]
+  TeamTournament TeamTournament[]
+
+  @@map("tournaments")
+}
+
 model Team {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime
+  id             String           @id @default(uuid())
+  name           String
+  popularName    String
+  createdAt      DateTime
+  sigla          String
+  stadium_id     String
+  stadium        Stadium          @relation(fields: [stadium_id], references: [id])
+  homeMatches    Match[]          @relation("homeMatches")
+  awayMatches    Match[]          @relation("awayMatches")
+  TeamTournament TeamTournament[]
 
   @@map("teams")
+}
+
+model Stadium {
+  id       String  @id @default(uuid())
+  name     String
+  capacity Int
+  city     String
+  state    String
+  country  String
+  teams    Team[]
+  matches  Match[]
+
+  @@map("stadiums")
+}
+
+model Match {
+  id           String      @id @default(uuid())
+  home_team_id String
+  away_team_id String
+  home_score   Int
+  away_score   Int
+  date         DateTime
+  stadium_id   String
+  stadium      Stadium     @relation(fields: [stadium_id], references: [id])
+  homeTeam     Team        @relation("homeMatches", fields: [home_team_id], references: [id])
+  awayTeam     Team        @relation("awayMatches", fields: [away_team_id], references: [id])
+  Statiscs     Statiscs[]
+  Tournament   Tournament? @relation(fields: [tournamentId], references: [id])
+  tournamentId String?
+
+  @@map("matches")
+}
+
+model Statiscs {
+  id                 String @id @default(uuid())
+  match_id           String
+  home_shots         Int
+  away_shots         Int
+  home_fouls         Int
+  away_fouls         Int
+  home_corners       Int
+  away_corners       Int
+  home_yellow_cards  Int
+  away_yellow_cards  Int
+  home_red_cards     Int
+  away_red_cards     Int
+  home_offsides      Int
+  away_offsides      Int
+  home_possession    Int
+  away_possession    Int
+  home_pass_accuracy Int
+  away_pass_accuracy Int
+  match              Match  @relation(fields: [match_id], references: [id])
+
+  @@map("statistics")
+}
+
+model TeamTournament {
+  id            String     @id @default(uuid())
+  team_id       String
+  tournament_id String
+  team          Team       @relation(fields: [team_id], references: [id])
+  tournament    Tournament @relation(fields: [tournament_id], references: [id])
+
+  @@map("team_tournaments")
 }
